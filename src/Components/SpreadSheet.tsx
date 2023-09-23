@@ -7,6 +7,8 @@ import SheetHolder from "./SheetHolder";
 
 import { ButtonNames } from "../Engine/GlobalDefinitions";
 
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface SpreadSheetProps {
   documentName: string;
@@ -50,10 +52,18 @@ function SpreadSheet({ documentName }: SpreadSheetProps) {
     return () => clearInterval(interval);
   });
 
+  // useEffect to show message if the user name is empty
+  useEffect(() => {
+    if (userName === '') {
+      toast.error('Please enter a username', {
+        autoClose: 1500,});
+    }
+  }, [userName]);
+
 
   function getUserLogin() {
     return <div>
-      {(userName === "") ? <div>Enter your user name</div> : <div></div>}
+      <ToastContainer />
       <input
         type="text"
         placeholder="User name"
