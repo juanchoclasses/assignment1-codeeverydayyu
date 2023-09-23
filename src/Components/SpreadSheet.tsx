@@ -53,6 +53,7 @@ function SpreadSheet({ documentName }: SpreadSheetProps) {
 
   function getUserLogin() {
     return <div>
+      {(userName === "") ? <div>Enter your user name</div> : <div></div>}
       <input
         type="text"
         placeholder="User name"
