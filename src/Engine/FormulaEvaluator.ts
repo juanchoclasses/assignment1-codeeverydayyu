@@ -48,7 +48,6 @@ export class FormulaEvaluator {
       this._result = this.parseExpression(formula);
     } catch (error: unknown) {
       if (error instanceof Error) {
-        console.log(error.message);
         this._errorMessage = error.message;
       }
     }
