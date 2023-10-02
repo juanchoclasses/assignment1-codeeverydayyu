@@ -319,6 +319,9 @@ export class SpreadSheetController {
       return;
     }
 
+    if (!userEditing!.isEditing) {
+      return;
+    }
     userEditing.formulaBuilder.setFormula([]);
     let cellBeingEdited = this._contributingUsers.get(user)?.cellLabel;
 
