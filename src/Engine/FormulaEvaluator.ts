@@ -46,42 +46,14 @@ export class FormulaEvaluator {
   evaluate(formula: FormulaType) {
     try {
       this._result = this.parseExpression(formula);
-    } catch (error) {
-      this._errorMessage = "error message";
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.log(error.message);
+        this._errorMessage = error.message;
+      }
     }
-    this._errorMessage = "";
-/*
-    switch (formula.length) {
-      case 0:
-        this._errorMessage = ErrorMessages.emptyFormula;
-        break;
-      case 7:
-        this._errorMessage = ErrorMessages.partial;
-        break;
-      case 8:
-        this._errorMessage = ErrorMessages.divideByZero;
-        break;
-      case 9:
-        this._errorMessage = ErrorMessages.invalidCell;
-        break;
-      case 10:
-        this._errorMessage = ErrorMessages.invalidFormula;
-        break;
-      case 11:
-        this._errorMessage = ErrorMessages.invalidNumber;
-        break;
-      case 12:
-        this._errorMessage = ErrorMessages.invalidOperator;
-        break;
-      case 13:
-        this._errorMessage = ErrorMessages.missingParentheses;
-        break;
-      default:
-        this._errorMessage = "";
-        break;
-    }*/
   }
-
+/*
   private parseExpression: (tokens: FormulaType) => number = (tokens) => {
     let tokenIndex = 0;
 
@@ -95,7 +67,7 @@ export class FormulaEvaluator {
           factor1 *= factor2;
         } else if (operator === '/') {
           if (factor2 === 0) {
-            throw new Error("Division by zero");
+            throw new Error(ErrorMessages.divideByZero);
           }
           factor1 /= factor2;
         } else if (operator === '+') {
@@ -104,7 +76,64 @@ export class FormulaEvaluator {
           factor1 -= factor2;
         }
       }
+      return factor1;
+    };
 
+    const parseFactor = (): number => {
+      let result = 0;
+      if (tokens[tokenIndex] === '(') {
+        tokenIndex++;
+        result = parseExpression();
+        if (tokens[tokenIndex] !== ')') {
+          throw new Error(ErrorMessages.missingParentheses);
+        }
+        tokenIndex++;
+      } else if (tokens[tokenIndex] === '-') {
+        tokenIndex++;
+        result = -parseFactor();
+      } else if (tokens[tokenIndex] === '+') {
+        tokenIndex++;
+        result = parseFactor();
+      } else if (!isNaN(Number(tokens[tokenIndex]))) {
+        result = Number(tokens[tokenIndex]);
+        tokenIndex++;
+      } else if (Cell.isCellName(tokens[tokenIndex])) {
+        const cell = this._sheetMemory.getCell(tokens[tokenIndex]);
+        if (cell) {
+          result = cell.getValue();
+        } else {
+          throw new Error(ErrorMessages.invalidCell);
+        }
+        tokenIndex++;
+      } else {
+        throw new Error(ErrorMessages.invalidNumber);
+      }
+      return result;
+    };
+
+    return parseTerm();
+  };
+*/
+
+
+  private parseExpression: (tokens: FormulaType) => number = (tokens) => {
+    let tokenIndex = 0;
+
+    const parseTerm = (): number => {
+      let factor1 = parseFactor();
+      while (tokenIndex < tokens.length && (tokens[tokenIndex] === '*' || tokens[tokenIndex] === '/')) {
+        const operator = tokens[tokenIndex];
+        tokenIndex++;
+        const factor2 = parseFactor();
+        if (operator === '*') {
+          factor1 *= factor2;
+        } else if (operator === '/') {
+          if (factor2 === 0) {
+            throw new Error(ErrorMessages.divideByZero);
+          }
+          factor1 /= factor2;
+        } 
+      }
       return factor1;
     };
 
@@ -129,9 +158,78 @@ export class FormulaEvaluator {
       }
     };
 
-    return parseTerm();
+    
+    let result = parseTerm();
+    while (tokenIndex < tokens.length && (tokens[tokenIndex] === '+' || tokens[tokenIndex] === '-')) {
+      const operator = tokens[tokenIndex];
+      tokenIndex++;
+      const term = parseTerm();
+      if (operator === '+') {
+        result += term;
+      } else if (operator === '-') {
+        result -= term;
+      }
+    }
+    return result;
+  };
+/*
+private parseExpression: (tokens: FormulaType) => number = (tokens) => {
+  let tokenIndex = 0;
+
+  const parseTerm = (): number => {
+    let factor1 = parseFactor();
+    while (tokenIndex < tokens.length && (tokens[tokenIndex] === '*' || tokens[tokenIndex] === '/')) {
+      const operator = tokens[tokenIndex];
+      tokenIndex++;
+      const factor2 = parseFactor();
+      if (operator === '*') {
+        factor1 *= factor2;
+      } else if (operator === '/') {
+        if (factor2 === 0) {
+          throw new Error("Division by zero");
+        }
+        factor1 /= factor2;
+      }
+    }
+    return factor1;
   };
 
+  const parseFactor = (): number => {
+    if (tokenIndex < tokens.length) {
+      const token = tokens[tokenIndex];
+      tokenIndex++;
+      if (/^\d+$/.test(token)) {
+        return parseFloat(token);
+      } else if (token === '(') {
+        const result = this.parseExpression(tokens);
+        if (tokens[tokenIndex] !== ')') {
+          throw new Error("Unmatched parentheses");
+        }
+        tokenIndex++;
+        return result;
+      } else {
+        throw new Error("Invalid token: " + token);
+      }
+    } else {
+      throw new Error("Unexpected end of input");
+    }
+  };
+
+  let result = parseTerm();
+  while (tokenIndex < tokens.length && (tokens[tokenIndex] === '+' || tokens[tokenIndex] === '-')) {
+    const operator = tokens[tokenIndex];
+    tokenIndex++;
+    const term = parseTerm();
+    if (operator === '+') {
+      result += term;
+    } else if (operator === '-') {
+      result -= term;
+    }
+  }
+
+  return result;
+};
+*/
   public get error(): string {
     return this._errorMessage
   }
