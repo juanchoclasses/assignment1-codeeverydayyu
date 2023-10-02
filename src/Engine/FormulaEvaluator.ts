@@ -128,7 +128,9 @@ export class FormulaEvaluator {
           factor1 *= factor2;
         } else if (operator === '/') {
           if (factor2 === 0) {
-            throw new Error(ErrorMessages.divideByZero);
+            this._result = Infinity;
+            this._errorMessage = ErrorMessages.divideByZero;
+            //throw new Error(ErrorMessages.divideByZero);
           }
           factor1 /= factor2;
         } 
