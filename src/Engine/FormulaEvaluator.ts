@@ -44,13 +44,13 @@ export class FormulaEvaluator {
    */
 
   evaluate(formula: FormulaType) {
-
-
-    // set the this._result to the length of the formula
-
-    this._result = formula.length;
+    try {
+      this._result = this.parseExpression(formula);
+    } catch (error) {
+      this._errorMessage = "error message";
+    }
     this._errorMessage = "";
-
+/*
     switch (formula.length) {
       case 0:
         this._errorMessage = ErrorMessages.emptyFormula;
@@ -79,8 +79,58 @@ export class FormulaEvaluator {
       default:
         this._errorMessage = "";
         break;
-    }
+    }*/
   }
+
+  private parseExpression: (tokens: FormulaType) => number = (tokens) => {
+    let tokenIndex = 0;
+
+    const parseTerm = (): number => {
+      let factor1 = parseFactor();
+      while (tokenIndex < tokens.length && (tokens[tokenIndex] === '*' || tokens[tokenIndex] === '/' || tokens[tokenIndex] === '+' || tokens[tokenIndex] === '-')) {
+        const operator = tokens[tokenIndex];
+        tokenIndex++;
+        const factor2 = parseFactor();
+        if (operator === '*') {
+          factor1 *= factor2;
+        } else if (operator === '/') {
+          if (factor2 === 0) {
+            throw new Error("Division by zero");
+          }
+          factor1 /= factor2;
+        } else if (operator === '+') {
+          factor1 += factor2;
+        } else if (operator === '-') {
+          factor1 -= factor2;
+        }
+      }
+
+      return factor1;
+    };
+
+    const parseFactor = (): number => {
+      if (tokenIndex < tokens.length) {
+        const token = tokens[tokenIndex];
+        tokenIndex++;
+        if (/^\d+$/.test(token)) {
+          return parseFloat(token);
+        } else if (token === '(') {
+          const result = this.parseExpression(tokens);
+          if (tokens[tokenIndex] !== ')') {
+            throw new Error("Unmatched parentheses");
+          }
+          tokenIndex++;
+          return result;
+        } else {
+          throw new Error("Invalid token: " + token);
+        }
+      } else {
+        throw new Error("Unexpected end of input");
+      }
+    };
+
+    return parseTerm();
+  };
 
   public get error(): string {
     return this._errorMessage
