@@ -158,7 +158,7 @@ describe("FormulaEvaluator", () => {
             let result = recalc.result;
             let error = recalc.error;
 
-            //expect(result).toEqual(Infinity); //The result of 1/0 is undefined, should throw an error.
+            expect(result).toEqual(Infinity); 
             expect(error).toEqual("#DIV/0!");
           });
         });
