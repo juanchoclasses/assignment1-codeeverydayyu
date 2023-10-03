@@ -44,193 +44,120 @@ export class FormulaEvaluator {
    */
 
   evaluate(formula: FormulaType) {
-    try {
-      this._result = this.parseExpression(formula);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        this._errorMessage = error.message;
-      }
+    // reset FormulaEvaluator for each cell
+    this._errorMessage = "";
+    this._currentFormula = [...formula];
+    this._result = 0;
+
+    // check for empty formula
+    if (this._currentFormula.length === 0) {
+      this._result = 0;
+      this._errorMessage = ErrorMessages.emptyFormula;
+      return;
+    }
+
+    // evaluate the formula in the cell
+    this._result = this.parseExpression();
+
+    // for input: 8 (
+    if (this._currentFormula.length > 0) {
+      this._errorMessage = ErrorMessages.invalidFormula;
     }
   }
-/*
-  private parseExpression: (tokens: FormulaType) => number = (tokens) => {
-    let tokenIndex = 0;
 
-    const parseTerm = (): number => {
-      let factor1 = parseFactor();
-      while (tokenIndex < tokens.length && (tokens[tokenIndex] === '*' || tokens[tokenIndex] === '/' || tokens[tokenIndex] === '+' || tokens[tokenIndex] === '-')) {
-        const operator = tokens[tokenIndex];
-        tokenIndex++;
-        const factor2 = parseFactor();
-        if (operator === '*') {
-          factor1 *= factor2;
-        } else if (operator === '/') {
-          if (factor2 === 0) {
-            throw new Error(ErrorMessages.divideByZero);
-          }
-          factor1 /= factor2;
-        } else if (operator === '+') {
-          factor1 += factor2;
-        } else if (operator === '-') {
-          factor1 -= factor2;
-        }
-      }
-      return factor1;
-    };
 
-    const parseFactor = (): number => {
-      let result = 0;
-      if (tokens[tokenIndex] === '(') {
-        tokenIndex++;
-        result = parseExpression();
-        if (tokens[tokenIndex] !== ')') {
-          throw new Error(ErrorMessages.missingParentheses);
-        }
-        tokenIndex++;
-      } else if (tokens[tokenIndex] === '-') {
-        tokenIndex++;
-        result = -parseFactor();
-      } else if (tokens[tokenIndex] === '+') {
-        tokenIndex++;
-        result = parseFactor();
-      } else if (!isNaN(Number(tokens[tokenIndex]))) {
-        result = Number(tokens[tokenIndex]);
-        tokenIndex++;
-      } else if (Cell.isCellName(tokens[tokenIndex])) {
-        const cell = this._sheetMemory.getCell(tokens[tokenIndex]);
-        if (cell) {
-          result = cell.getValue();
-        } else {
-          throw new Error(ErrorMessages.invalidCell);
-        }
-        tokenIndex++;
-      } else {
-        throw new Error(ErrorMessages.invalidNumber);
-      }
+  /**
+   * Factor: cell, number, (expression)
+   * @returns the value of factor.
+   */
+  private parseFactor(): number {
+    let result = 0;
+    // get the first token in the formula
+    let token = this._currentFormula.shift();
+
+    // if the token is a cell, return the cell value
+    if (this.isCellReference(token)) {
+      [result, this._errorMessage] = this.getCellValue(token);
       return result;
-    };
 
-    return parseTerm();
-  };
-*/
+      // else if the token is a number, return the number
+    } else if (this.isNumber(token)) {
+      return Number(token);
 
-
-  private parseExpression: (tokens: FormulaType) => number = (tokens) => {
-    let tokenIndex = 0;
-
-    const parseTerm = (): number => {
-      let factor1 = parseFactor();
-      while (tokenIndex < tokens.length && (tokens[tokenIndex] === '*' || tokens[tokenIndex] === '/')) {
-        const operator = tokens[tokenIndex];
-        tokenIndex++;
-        const factor2 = parseFactor();
-        if (operator === '*') {
-          factor1 *= factor2;
-        } else if (operator === '/') {
-          if (factor2 === 0) {
-            this._result = Infinity;
-            this._errorMessage = ErrorMessages.divideByZero;
-            //throw new Error(ErrorMessages.divideByZero);
-          }
-          factor1 /= factor2;
-        } 
+      // else if the token is a (, return the expression
+    } else if (token === '(') {
+      // check for empty expression
+      if (this._currentFormula.length === 0) { 
+        this._errorMessage = ErrorMessages.invalidFormula;
+        return result; // not sure about this;
       }
-      return factor1;
-    };
+      // parse expression
+      let a = this.parseExpression();
+      // if the next token after parsing expression is a ")", return the expression
+      token = this._currentFormula.shift();
+      if (token === ')') {
+        return a;
 
-    const parseFactor = (): number => {
-      if (tokenIndex < tokens.length) {
-        const token = tokens[tokenIndex];
-        tokenIndex++;
-        if (/^\d+$/.test(token)) {
-          return parseFloat(token);
-        } else if (token === '(') {
-          const result = this.parseExpression(tokens);
-          if (tokens[tokenIndex] !== ')') {
-            throw new Error("Unmatched parentheses");
-          }
-          tokenIndex++;
-          return result;
-        } else {
-          throw new Error("Invalid token: " + token);
-        }
+        // otherwise the expression is missing a ")"
       } else {
-        throw new Error("Unexpected end of input");
+        this._errorMessage = ErrorMessages.missingParentheses;
+        return a; // not sure about this, return a or result?
       }
-    };
 
-    
-    let result = parseTerm();
-    while (tokenIndex < tokens.length && (tokens[tokenIndex] === '+' || tokens[tokenIndex] === '-')) {
-      const operator = tokens[tokenIndex];
-      tokenIndex++;
-      const term = parseTerm();
-      if (operator === '+') {
-        result += term;
-      } else if (operator === '-') {
-        result -= term;
-      }
-    }
-    return result;
-  };
-/*
-private parseExpression: (tokens: FormulaType) => number = (tokens) => {
-  let tokenIndex = 0;
-
-  const parseTerm = (): number => {
-    let factor1 = parseFactor();
-    while (tokenIndex < tokens.length && (tokens[tokenIndex] === '*' || tokens[tokenIndex] === '/')) {
-      const operator = tokens[tokenIndex];
-      tokenIndex++;
-      const factor2 = parseFactor();
-      if (operator === '*') {
-        factor1 *= factor2;
-      } else if (operator === '/') {
-        if (factor2 === 0) {
-          throw new Error("Division by zero");
-        }
-        factor1 /= factor2;
-      }
-    }
-    return factor1;
-  };
-
-  const parseFactor = (): number => {
-    if (tokenIndex < tokens.length) {
-      const token = tokens[tokenIndex];
-      tokenIndex++;
-      if (/^\d+$/.test(token)) {
-        return parseFloat(token);
-      } else if (token === '(') {
-        const result = this.parseExpression(tokens);
-        if (tokens[tokenIndex] !== ')') {
-          throw new Error("Unmatched parentheses");
-        }
-        tokenIndex++;
-        return result;
-      } else {
-        throw new Error("Invalid token: " + token);
-      }
+      // else set error message
     } else {
-      throw new Error("Unexpected end of input");
-    }
-  };
-
-  let result = parseTerm();
-  while (tokenIndex < tokens.length && (tokens[tokenIndex] === '+' || tokens[tokenIndex] === '-')) {
-    const operator = tokens[tokenIndex];
-    tokenIndex++;
-    const term = parseTerm();
-    if (operator === '+') {
-      result += term;
-    } else if (operator === '-') {
-      result -= term;
+      this._errorMessage = ErrorMessages.invalidFormula; // not sure about the error message
+      return result;
     }
   }
 
-  return result;
-};
-*/
+  /**
+   * Expression: term, term + term, term - term
+   * @returns the value of expression.
+   */
+  private parseExpression(): number {
+    let a = this.parseTerm();
+    while (this._currentFormula.length > 0 && (this._currentFormula[0] === '+' || this._currentFormula[0] === '-')) {
+      let operator = this._currentFormula.shift();
+      let b = this.parseTerm();
+      if (operator === '+') {
+        a += b;
+      } else if (operator === '-') {
+        a -= b;
+      } else {
+        return a; // building "a" all the while.
+      }
+    }
+    return a;
+  }
+
+  /**
+   * term: factor, factor * factor, factor / factor
+   * @returns  the value of term.
+   */
+  private parseTerm() : number {
+    let a = this.parseFactor();
+    while (this._currentFormula.length > 0 && (this._currentFormula[0] === '*' || this._currentFormula[0] === '/')) {
+      let operator = this._currentFormula.shift();
+      let b = this.parseFactor();
+      if (operator === '*') {
+        a *= b;
+      } else if (operator === '/') {
+        // if divided by zero, set error message and return Infinity
+        if (b === 0) {
+          this._errorMessage = ErrorMessages.divideByZero;
+          a = Infinity; // not sure about this, a = Infinity or this._result = Infinity?
+        }
+        a /= b;
+      } else {
+        return a;
+      }
+    }
+    return a;
+  }
+
+
+
   public get error(): string {
     return this._errorMessage
   }
